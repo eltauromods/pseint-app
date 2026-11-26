@@ -13,8 +13,12 @@ jobs:
       - name: Descomprimir proyecto (si se subio como zip)
         run: |
           for z in *.zip; do if [ -f "$z" ]; then unzip -q -o "$z" -d proyecto_src; fi; done
-          S=$(find . -name settings.gradle -not -path './.git/*' | head -1)
-          echo "PROJ_DIR=$(dirname "$S")" >> "$GITHUB_ENV"
+          S=$(find . -maxdepth 4 \( -name "settings.gradle" -o -name "settings.gradle.kts" \) -not -path './.git/*' | head -1)
+          if [ -n "$S" ]; then
+            echo "PROJ_DIR=$(dirname "$S")" >> "$GITHUB_ENV"
+          else
+            echo "PROJ_DIR=." >> "$GITHUB_ENV"
+          fi
 
       - uses: actions/setup-java@v4
         with:
@@ -22,6 +26,9 @@ jobs:
           java-version: '17'
 
       - uses: android-actions/setup-android@v3
+        with:
+          packages: "platforms;android-34 build-tools;34.0.0 platform-tools"
+          accept-android-sdk-licenses: true
 
       - uses: gradle/actions/setup-gradle@v4
         with:
@@ -34,7 +41,8 @@ jobs:
       - name: Renombrar APK
         run: |
           mkdir -p salida
-          cp "$(find . -path '*build/outputs/apk/release/*.apk' | head -1)" salida/PSeInt-Web.apk
+          APK_PATH=$(find . -path '*build/outputs/apk/release/*.apk' | head -1)
+          cp "$APK_PATH" salida/PSeInt-Web.apk
 
       - uses: actions/upload-artifact@v4
         with:
