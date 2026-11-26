@@ -1,0 +1,42 @@
+name: Build APK
+
+on:
+  workflow_dispatch:
+  push:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Descomprimir proyecto (si se subio como zip)
+        run: |
+          for z in *.zip; do if [ -f "$z" ]; then unzip -q -o "$z" -d proyecto_src; fi; done
+          S=$(find . -name settings.gradle -not -path './.git/*' | head -1)
+          echo "PROJ_DIR=$(dirname "$S")" >> "$GITHUB_ENV"
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: android-actions/setup-android@v3
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+
+      - name: Compilar APK
+        working-directory: ${{ env.PROJ_DIR }}
+        run: gradle assembleRelease --no-daemon --stacktrace
+
+      - name: Renombrar APK
+        run: |
+          mkdir -p salida
+          cp "$(find . -path '*build/outputs/apk/release/*.apk' | head -1)" salida/PSeInt-Web.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PSeInt-Web-APK
+          path: salida/PSeInt-Web.apk
